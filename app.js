@@ -14,7 +14,7 @@
     const snap=get("fees-snapshot");
     const dataset=snap?JSON.parse(snap.textContent):await (async()=>{const r=await fetch("fees.json");if(!r.ok)throw Error("fees");return r.json();})();
     const {deals,aliases}=dataset;
-    const rateStart=10,pools=["保荐人","保荐人及OC","列名CMI"];
+    const rateStart=10,pools=["保荐人","保荐人及OC","具名承销团"];
     const names=dataset.ranks.map(x=>x.name).concat(pools.map(x=>"发行规模·"+x),pools.map(x=>"理论平均承销费率·"+x));
     names[4]="保荐人总金额";
     const bankKeys=Object.fromEntries(Object.entries(aliases).map(([k,v])=>[k,v.map(fold)]));
@@ -32,6 +32,8 @@
       const rows=Array.from(frag.children),first=rows[0],active=sorting||baseline,tr=el("tr");
       columns.forEach((label,i)=>{
         const th=el("th"),button=el("button",label),numeric=currentScope==="deal"?i>0&&i<7:currentScope==="market"?i>0:i!==1;
+        const unit=label.match(/^(.+)(（[^（）]+）)$/);
+        if(unit){const heading=el("span",null,"heading");heading.append(el("span",unit[1]),el("span",unit[2]));button.replaceChildren(heading);}
         th.scope="col";th.className=numeric?"rate":"";button.type="button";button.setAttribute("aria-label",label);
         if(active.col===i)th.setAttribute("aria-sort",active.dir===1?"ascending":"descending");
         button.title=(currentScope==="deal"&&i===0?"按上市日":currentScope==="deal"&&i===3?"按折合港元的保荐费":currentScope==="deal"&&i===8?"按具名机构家数":label)+"排序";
@@ -73,10 +75,10 @@
       cell(r,d.s.join("、")||(na?"不适用":"未列名"),"firms");
       const known=d.knownCMI;
       const named=new Set([...d.roles.flat(),...known]);
-      const list=details(na?"不涉及发售":"查看分工 · "+named.size+" 家具名机构");for(const [i,bs] of d.roles.entries()){
+      const list=details(na?"不涉及发售":"查看分工");for(const [i,bs] of d.roles.entries()){
         const p=el("p");p.append(el("b",groupNames[i]+"："),document.createTextNode(bs.join("、")||"未列名"));list.append(p);}
-      for(const [label,bs] of [["已核实银团 CMI",known],["仅香港包销",d.c[1]],["非银团 CMI",d.c[2]]])if(bs.length)list.append(el("p",label+"："+bs.join("、")));
-      if(!na&&!d.complete)list.append(el("small","仅列可核实成员，不据此均分全单佣金。"));cell(r,list,"cmi");
+      for(const [label,bs] of [["银团 CMI",known],["香港包销项下列名",d.c[1]],["非银团 CMI",d.c[2]]])if(bs.length)list.append(el("p",label+"："+bs.join("、")));
+      cell(r,list,"cmi");
       const sponsorFees=d.contributions.map(c=>c[1]).filter(v=>v!=null);
       rowKeys.set(r,[d.date,d.gross,d.theoretical,sponsorFees.length?sum(sponsorFees):null,d.fixed??d.cf,d.i,
         d.t,d.s.join("、")||null,na?null:named.size]);return r;
@@ -92,25 +94,16 @@
         if(!byBank.has(b))byBank.set(b,[]);byBank.get(b).push(d);
       }return byBank;
     }
-    function poolNames(d,pool){return new Set(pool===0?d.s:pool===1?[...d.s,...d.roles[1]]:d.knownCMI);}
+    function poolNames(d,pool){return new Set(pool===0?d.s:pool===1?[...d.s,...d.roles[1]]:d.syndicate);}
     function exclusion(d,bank,key){
       if(d.route!=="发售"&&key!==0)return "不涉及发售";
       const pool=key>=rateStart?key-rateStart:key>=7?key-7:key>=4?key-4:Math.max(0,key-1);
       if(!poolNames(d,pool).has(bank)){
         if(pool<2)return pool===0?"非本宗保荐人":"非本宗保荐人或 OC";
         return d.c[1].includes(bank)?"仅香港包销":d.c[2].includes(bank)?"非银团 CMI":
-          "列有其他分工，未核实为全单银团 CMI";
+          "未列入具名承销团";
       }
-      return pool===2&&!d.complete?"已核实参与，未披露完整分摊名册":"本口径未披露可计金额";
-    }
-    function coverage(row,drill,bank,all,included,key){
-      const used=new Set(included),cellCount=cell(row,used.size,"rate");
-      if(all.length===used.size)return;
-      cellCount.append(el("small","共参与 "+all.length));
-      drill.append(el("b","参与但未计入本口径"));
-      for(const d of all){if(used.has(d))continue;
-        drill.append(el("p",d.code+" · "+d.zh+" · "+exclusion(d,bank,key)));
-      }
+      return "本口径未披露可计金额";
     }
     function rankedBy(rows,score){
       rows.sort((a,b)=>{const x=score(a),y=score(b);
@@ -148,6 +141,7 @@
     }
     function render(){
       const mode=location.hash==="#banks"?"bank":location.hash==="#market"?"market":"deal";
+      head.closest("table").dataset.view=mode;
       const bank=mode==="bank",market=mode==="market",key=Number(metric.value), term=fold(search.value);
       const rates=bank&&key>=rateStart,scope=bank?"bank:"+key:mode;
       if(currentScope!==scope){sorting=null;rankColumn=2;currentScope=scope;}
@@ -158,7 +152,7 @@
       const ds=deals.filter(d=>(!q.value||quarter(d)===q.value)&&(!size.value||(d.gross>0&&
         (size.value==="small"?d.gross<5e8:size.value==="mid"?d.gross>=5e8&&d.gross<2e9:d.gross>=2e9))));
       const visible=bank||market||!term?ds:ds.filter(d=>searchKeys.get(d).some(s=>s.includes(term)));
-      const st=periodStats(visible),participants=bank?participation(ds):null;let count=0;const frag=document.createDocumentFragment();
+      const st=periodStats(visible);let count=0;const frag=document.createDocumentFragment();
       if(rates){
         const {rows,sample}=rateRank(ds,key-rateStart),overall=periodStats(sample);
         tableHead(["排名","投行集团","项目等权平均费率","发行规模加权平均费率","计入项目","项目发行规模（百万港元）"]);
@@ -167,7 +161,7 @@
           const r=el("tr"),dd=details(x.b);cell(r,x.place,"rate");
           for(const d of x.list)dd.append(el("p",d.code+" · "+d.zh+" · "+pct(100*d.theoretical/d.gross)));
           cell(r,dd,"bankname");cell(r,pct(x.avg),"rate");cell(r,pct(x.weighted),"rate");
-          coverage(r,dd,x.b,participants.get(x.b)||x.list,x.list,key);cell(r,mm(x.gross),"rate");
+          cell(r,x.count,"rate");cell(r,mm(x.gross),"rate");
           rowKeys.set(r,[x.place,x.b,Number(x.avg.toFixed(2)),Number(x.weighted.toFixed(2)),x.count,x.gross]);frag.append(r);count++;}
         get("view-note").textContent="每家机构每宗计一次全单费率。项目等权取算术平均；规模加权用全单理论佣金合计除以对应发行规模。";
       }else if(bank){
@@ -178,10 +172,9 @@
         summary([["参与机构",ranked.length+" 家"],[names[key]+"（百万港元）",ranked.length?mm(total/100):"—"],["前五家金额占比",total?pct(100*top/total):"—"]]);
         for(const x of ranked){if(term&&!(bankKeys[x.b]||[fold(x.b)]).some(s=>s.includes(term)))continue;
           const r=el("tr");cell(r,x.place??"—","rate");const drill=details(x.b);
-          drill.append(el("small",names[key]+" · 该机构逐宗计入金额（港元）"));
           for(const [d,value] of x.list){drill.append(el("p",d.code+" · "+d.zh+" · HKD "+f(value/100)));}
           cell(r,drill,"bankname");cell(r,mm(x.sum/100),"rate");
-          coverage(r,drill,x.b,participants.get(x.b)||x.list.map(a=>a[0]),x.list.map(a=>a[0]),key);
+          cell(r,x.count,"rate");
           cell(r,mm(x.avg/100),"rate");cell(r,total?pct(100*x.sum/total):"—","rate");
           if(key<7)cell(r,x.sizeCount?mm(x.size/100):"—","rate");if(commissionRank)cell(r,x.size?pct(100*x.matched/x.size):"—","rate");
           rowKeys.set(r,[x.place,x.b,x.sum,x.count,x.avg,total?x.sum/total:null,x.sizeCount?x.size:null,x.size?x.matched/x.size:null]);frag.append(r);count++;}
@@ -202,16 +195,16 @@
       const extra=get("unranked");extra.replaceChildren();extra.hidden=true;
       if(bank&&term){
         const shown=new Set(Array.from(frag.children,r=>rowKeys.get(r)[1]));
-        for(const [b,all] of participants){
+        for(const [b,all] of participation(ds)){
           if(shown.has(b)||!(bankKeys[b]||[fold(b)]).some(n=>n.includes(term)))continue;
-          const drill=details(b+" · 参与 "+all.length+" 宗，本口径无可排名项目");
+          const drill=details(b+" · 本口径无计入项目");
           for(const d of all)drill.append(el("p",d.code+" · "+d.zh+" · "+exclusion(d,b,key)));
           extra.append(drill);extra.hidden=false;
         }
       }
       orderTable(frag);
       if(!count){const r=el("tr");cell(r,extra.hidden?"没有匹配结果":"没有符合本排名口径的项目，列名参与记录见下。").colSpan=head.rows[0].cells.length;frag.append(r);}
-      body.replaceChildren(frag);get("count").textContent=bank?names[key]+" · "+count+" 家":market?count+" 个季度":count+" 宗发行";
+      body.replaceChildren(frag);get("count").textContent=bank?names[key]+" · "+count+" 家":market?count+" 个季度":count+" 宗上市";
     }
     for(const [id,hash] of [["deal","deals"],["bank","banks"],["market","market"]]) get("by-"+id).onclick=()=>{search.value="";history.replaceState(null,"","#"+hash);render();};
     for(const control of [metric,q,size]) control.onchange=render;
