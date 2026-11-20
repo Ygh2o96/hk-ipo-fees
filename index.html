@@ -1,0 +1,10 @@
+<!doctype html>
+<html lang="zh-Hans"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#144f49"><title>香港 IPO 费用观察</title><link rel="icon" href="mark.svg"><link rel="stylesheet" href="style.css"></head>
+<body><header><img src="mark.svg" width="36" height="36" alt=""><div><small>香港主板 · 2026</small><h1>香港 IPO 费用观察</h1></div><a class="download" href="HK-IPO-Fee-Rankings-2026.xlsx" download>下载 Excel</a></header>
+<main><nav aria-label="数据视图"><button id="by-deal" type="button" aria-pressed="true">逐宗发行</button><button id="by-bank" type="button" aria-pressed="false">机构排名</button></nav>
+<div class="controls"><label id="metric-label" hidden>排名口径<select id="metric"></select></label><label>搜索<input type="search" id="search" placeholder="发行人、代码或投行"></label></div>
+<div class="meta"><span id="count" role="status">载入中…</span><span id="date"></span></div>
+<div class="scroll" tabindex="0" aria-label="数据表"><table><thead></thead><tbody></tbody></table></div>
+<p id="rate-note" class="method">¹ 激励项按披露上限或酌情费率测算；三列均为每家保荐集团的均分情景，不是实收费率。</p>
+<details class="method"><summary>统计口径与来源</summary><p>逐宗列出招股书披露的保荐人和资本市场中介人（CMI），按投行集团去重。仅参与香港包销和非银团 CMI 另列；名册不完整时，不据此平分全单佣金。</p><p>每家保荐人平均承销费率＝该项佣金 ÷ 同口径发售金额 ÷ 保荐集团数。固定与激励分别列示；激励按披露上限或酌情情景，不代表实付。合计沿用 Excel「仅保荐人」分摊口径；已明确全额抵扣保荐费的项目，合计为扣除后的净额。未披露的金额不作零。保荐费披露冲突时采用较低合计；未披露各家金额时按保荐集团均分。</p></details></main>
+<script src="app.js" defer></script></body></html>
