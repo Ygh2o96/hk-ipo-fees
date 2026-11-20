@@ -7,3 +7,9 @@
 .cmi{min-width:135px}.cmi b{font-weight:600}.bankname details[open]{max-width:370px}.bankname p{font-weight:400;font-size:12px}
 td,th{vertical-align:top}.rate,.col{font-variant-numeric:tabular-nums}tr:hover td{background:#f6f9f8}
 @media(max-width:700px){.summary{grid-template-columns:repeat(2,minmax(0,1fr))}.summary dd{font-size:17px}.summary>div{padding:8px}.controls label{max-width:none}.scroll td.name,.scroll th:first-child{position:sticky;left:0;z-index:1;background:#fbfcfb}.scroll td.name{min-width:140px;max-width:160px}.table{font-size:13px}nav{gap:18px}}
+.scroll th button{display:inline-flex;align-items:center;justify-content:flex-start;gap:5px;padding:3px 0;background:none;border:0;color:inherit;font-weight:inherit;cursor:pointer}
+.scroll th button::after{content:"↕";font-size:11px;color:#64776f;line-height:1}
+.scroll th.rate button{flex-direction:row-reverse}
+.scroll th[aria-sort] button{color:#075f55}
+.scroll th[aria-sort=ascending] button::after{content:"↑"}.scroll th[aria-sort=descending] button::after{content:"↓"}
+.scroll th button:focus-visible{outline:2px solid #187669;outline-offset:2px}
